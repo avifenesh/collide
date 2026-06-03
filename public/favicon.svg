@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Collide">
+  <rect width="64" height="64" rx="12" fill="#07100f"/>
+  <path d="M16 40 28 12h22L39 29h11L30 54l5-17H16Z" fill="#12cbc3"/>
+  <path d="M24 40h11l-3 10 12-15H32l9-17H30L21 40h3Z" fill="#f5a524" opacity=".95"/>
+</svg>
