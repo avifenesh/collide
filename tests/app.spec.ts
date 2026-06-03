@@ -15,11 +15,27 @@ test('app loads the workbench and core controls without console errors', async (
   await expect(page.getByRole('button', { name: /Docs/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Share/ })).toBeVisible()
   await expect(page.getByText('Metrics (Live)')).toBeVisible()
+  await expect(page.getByTestId('learning-path')).toContainText('1 / 5')
+  await expect(page.getByTestId('learning-coach')).toContainText('What changed')
 
   await page.getByRole('button', { name: /Strided/ }).click()
-  await expect(page.getByText('50.0 %')).toBeVisible()
+  await expect(page.locator('.metric-row').filter({ hasText: 'Efficiency' })).toContainText('50.0 %')
   await expect(page.getByText('256 B').first()).toBeVisible()
+  await expect(page.getByTestId('learning-coach')).toContainText('+32 cycles')
   expect(messages).toEqual([])
+})
+
+test('learning path and coach guide students across labs', async ({ page }) => {
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Jump to Occupancy' }).click()
+  await expect(page.getByRole('heading', { name: 'Occupancy / Latency Hiding' })).toBeVisible()
+  await expect(page.getByTestId('learning-path')).toContainText('5 / 5')
+  await expect(page.getByTestId('learning-coach')).toContainText('Probe: increase shared memory')
+
+  await page.getByRole('button', { name: /Shared Heavy/ }).click()
+  await expect(page.getByTestId('learning-coach')).toContainText('Cycle delta')
+  await expect(page.getByTestId('learning-coach')).toContainText('Current')
 })
 
 test('each 1.0 lab renders a compute-backed metric surface', async ({ page }) => {
@@ -32,7 +48,7 @@ test('each 1.0 lab renders a compute-backed metric surface', async ({ page }) =>
   ]
 
   for (const check of labChecks) {
-    await page.getByRole('button', { name: check.button }).click()
+    await page.locator('.lab-list').getByRole('button', { name: check.button }).click()
     await expect(page.locator('.metric-row').filter({ hasText: check.metric })).toBeVisible()
     await page.getByRole('button', { name: check.preset }).click()
     await expect(page.getByText(check.expected).first()).toBeVisible()
@@ -42,7 +58,7 @@ test('each 1.0 lab renders a compute-backed metric surface', async ({ page }) =>
 test('share URL contains the selected lab state', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:5173' })
   await page.goto('/')
-  await page.getByRole('button', { name: /Bank Conflicts/ }).click()
+  await page.locator('.lab-list').getByRole('button', { name: /Bank Conflicts/ }).click()
   await page.getByRole('button', { name: /Stride 2/ }).click()
   await page.getByRole('button', { name: /Share/ }).click()
   await expect(page.getByRole('button', { name: /Copied/ })).toBeVisible()
@@ -64,7 +80,7 @@ test('top actions reveal notes, cycle examples, share fallback, and help copy', 
   await page.getByRole('button', { name: 'Next Example' }).click()
   await expect(page.getByText('Current preset:')).toBeVisible()
   await expect(page.getByText('Strided').first()).toBeVisible()
-  await expect(page.getByText('50.0 %')).toBeVisible()
+  await expect(page.locator('.metric-row').filter({ hasText: 'Efficiency' })).toContainText('50.0 %')
 
   await page.getByRole('button', { name: 'Help' }).click()
   await expect(page.getByTestId('help-panel')).toContainText('Pick a lab on the left')
@@ -112,7 +128,7 @@ test('inspector tabs, reduction choice buttons, and sliders update visible state
   await page.getByRole('button', { name: /WGSL/ }).click()
   await expect(page.getByText(/lane_address/)).toBeVisible()
 
-  await page.getByRole('button', { name: /Reduce \/ Scan/ }).click()
+  await page.locator('.lab-list').getByRole('button', { name: /Reduce \/ Scan/ }).click()
   const primitiveControl = page.locator('.choice-control').filter({ hasText: 'Primitive' })
   await primitiveControl.getByRole('button', { name: 'Scan', exact: true }).click()
   await expect(primitiveControl.getByRole('button', { name: 'Scan', exact: true })).toHaveClass(/active/)
@@ -122,7 +138,7 @@ test('inspector tabs, reduction choice buttons, and sliders update visible state
   await expect(page.getByText(/Stage\s+4\s+\/\s+5/)).toBeVisible()
   await expect(page.locator('.metric-row').filter({ hasText: 'Partner Offset' })).toContainText('8')
 
-  await page.getByRole('button', { name: /Coalescing/ }).click()
+  await page.locator('.lab-list').getByRole('button', { name: /Coalescing/ }).click()
   await page.getByLabel(/Stride/).fill('4')
   await expect(page.locator('.metric-row').filter({ hasText: 'Transactions' })).toContainText('4')
   await expect(page.locator('.metric-row').filter({ hasText: 'Efficiency' })).toContainText('25.0 %')
@@ -138,6 +154,7 @@ test('contextual question-mark help exists for every major workbench region', as
     /Explain parameters/i,
     /Explain stride/i,
     /Explain canvas/i,
+    /Explain coach/i,
     /Explain metrics/i,
     /Explain Transactions/,
     /Explain cycles/i,
@@ -169,7 +186,7 @@ test('mobile viewport keeps all workbench regions reachable', async ({ page }) =
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Memory Coalescing' })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Bank Conflicts/ })).toBeVisible()
+  await expect(page.locator('.lab-list').getByRole('button', { name: /Bank Conflicts/ })).toBeVisible()
   await expect(page.getByTestId('lab-canvas')).toBeVisible()
   await expect(page.getByText('Metrics (Live)')).toBeVisible()
 })

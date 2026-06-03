@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ArrowRight,
   BookOpen,
   CheckCircle2,
   Code2,
@@ -34,6 +35,8 @@ import type {
   ChoiceControlSpec,
   LabDefinition,
   LabId,
+  LabPreset,
+  LabResult,
   Metric as MetricType,
   NumericControlSpec,
   WorkbenchControls,
@@ -67,6 +70,11 @@ function App() {
     ? webGpuResult
     : referenceResult
   const selectedPreset = currentPreset(controls)
+  const activeLabIndex = LAB_DEFINITIONS.findIndex((labOption) => labOption.id === lab.id)
+  const baselineResult = useMemo(() => {
+    const baselinePreset = lab.presets[0]
+    return simulateReference(controlsForPreset(lab.id, baselinePreset.id, controls))
+  }, [controls, lab.id, lab.presets])
   const status = runtime ? 'Ready' : webGpuError ? 'Unavailable' : 'Initializing'
   const verified = result.source === 'webgpu' && compareResults(result)
 
@@ -196,6 +204,7 @@ function App() {
           <span className="divider" />
           <h1>{lab.title}</h1>
         </div>
+        <LearningPath activeIndex={activeLabIndex} onSelect={selectLab} />
         <nav className="top-actions" aria-label="Workbench actions">
           <button type="button" className="icon-button" onClick={openDocs} title="Open lab notes" aria-label="Docs">
             <BookOpen size={18} />
@@ -249,6 +258,14 @@ function App() {
 
           <section className="rail-section" ref={presetsRef}>
             <SectionTitle title="Guided Presets" helpId="presets" activeHelp={activeHelp} onHelp={showHelp} />
+            <LearningCoach
+              lab={lab}
+              preset={selectedPreset}
+              result={result}
+              baselineResult={baselineResult}
+              activeHelp={activeHelp}
+              onHelp={showHelp}
+            />
             <div className="preset-list">
               {lab.presets.map((preset) => (
                 <button
@@ -269,7 +286,6 @@ function App() {
                 </button>
               ))}
             </div>
-            <p className="challenge-copy">{selectedPreset.why}</p>
           </section>
 
           <section className="rail-section">
@@ -427,6 +443,80 @@ function App() {
 }
 
 export default App
+
+function LearningPath({ activeIndex, onSelect }: {
+  activeIndex: number
+  onSelect: (labId: LabId) => void
+}) {
+  return (
+    <div className="learning-path" aria-label="Learning path" data-testid="learning-path">
+      <span>Learning Path</span>
+      <div className="learning-steps">
+        {LAB_DEFINITIONS.map((labOption, index) => (
+          <button
+            key={labOption.id}
+            type="button"
+            className={index === activeIndex ? 'active' : index < activeIndex ? 'complete' : ''}
+            aria-label={`Jump to ${labOption.shortTitle}`}
+            title={labOption.title}
+            onClick={() => onSelect(labOption.id)}
+          >
+            {index + 1}
+          </button>
+        ))}
+      </div>
+      <strong>{Math.max(0, activeIndex) + 1} / {LAB_DEFINITIONS.length}</strong>
+    </div>
+  )
+}
+
+function LearningCoach({ lab, preset, result, baselineResult, activeHelp, onHelp }: {
+  lab: LabDefinition
+  preset: LabPreset
+  result: LabResult
+  baselineResult: LabResult
+  activeHelp: string | null
+  onHelp: (key: string) => void
+}) {
+  const cycleDelta = result.summary.estimatedCycles - baselineResult.summary.estimatedCycles
+  const efficiencyDelta = result.summary.efficiency - baselineResult.summary.efficiency
+  const tone = cycleDelta < 0 || efficiencyDelta > 0 ? 'good' : cycleDelta > 0 || efficiencyDelta < 0 ? 'warn' : 'neutral'
+
+  return (
+    <article className={`learning-coach ${tone}`} data-testid="learning-coach">
+      <div className="coach-head">
+        <span>What changed</span>
+        <HelpButton id="coach" activeHelp={activeHelp} onToggle={onHelp} />
+      </div>
+      <p>{preset.why}</p>
+      <div className="coach-compare" aria-label="Current pattern compared with the baseline preset">
+        <div>
+          <small>Baseline</small>
+          <strong>{baselineResult.summary.value}</strong>
+          <span>{baselineResult.summary.label}</span>
+        </div>
+        <ArrowRight size={16} aria-hidden="true" />
+        <div>
+          <small>Current</small>
+          <strong>{result.summary.value}</strong>
+          <span>{result.summary.label}</span>
+        </div>
+      </div>
+      <dl className="coach-delta">
+        <div>
+          <dt>Cycle delta</dt>
+          <dd>{formatCycleDelta(cycleDelta)}</dd>
+        </div>
+        <div>
+          <dt>Efficiency</dt>
+          <dd>{formatPercentRatio(result.summary.efficiency)}</dd>
+        </div>
+      </dl>
+      <span className="coach-probe">{probeCopy(lab.id)}</span>
+      <InlineHelp id="coach" activeHelp={activeHelp} />
+    </article>
+  )
+}
 
 interface ControlListProps {
   lab: LabDefinition
@@ -614,6 +704,29 @@ function formatMark(key: NumericControlSpec['key'], value: number): string {
   return String(value)
 }
 
+function formatCycleDelta(delta: number): string {
+  if (delta === 0) {
+    return 'no change'
+  }
+  const sign = delta > 0 ? '+' : '-'
+  return `${sign}${Math.abs(delta).toLocaleString()} cycles`
+}
+
+function formatPercentRatio(value: number): string {
+  return `${(value * 100).toFixed(1)} %`
+}
+
+function probeCopy(labId: LabId): string {
+  const copy: Record<LabId, string> = {
+    coalescing: 'Probe: raise stride, then fix it with unit-stride layout.',
+    banks: 'Probe: try a power-of-two bank stride, then add one padding word.',
+    divergence: 'Probe: compare alternating branches with a uniform branch.',
+    reduction: 'Probe: switch Reduce to Scan and step through partner offsets.',
+    occupancy: 'Probe: increase shared memory until the limiter changes.',
+  }
+  return copy[labId]
+}
+
 function helpLabel(id: string): string {
   return id
     .replace(/^control-/, '')
@@ -644,6 +757,7 @@ function helpText(id: string): string {
     parameters: 'Parameters mutate the shader input. The CPU reference updates immediately; WebGPU replaces it only after matching the reference.',
     reset: 'Reset Lab restores the current lab to its first guided preset and stops timeline playback.',
     canvas: 'The center canvas draws the actual lane records and summary counters returned by the simulator.',
+    coach: 'What changed compares the selected preset with the lab baseline so the hardware consequence is visible before you inspect the shader.',
     metrics: 'Metrics are live counters decoded from the current result: WebGPU when verified, CPU reference as fallback.',
     cycles: 'Estimated cycles are teaching scores, not vendor-profiler timing. They let patterns be compared consistently.',
     status: 'Status tells you whether WebGPU is available, which runtime is displayed, and whether GPU output matched the CPU reference.',

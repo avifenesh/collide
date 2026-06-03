@@ -5,7 +5,7 @@ test('@visual five lab canvases render non-empty screenshots', async ({ page }) 
   const labs = [/Coalescing/, /Bank Conflicts/, /Divergence/, /Reduce \/ Scan/, /Occupancy/]
 
   for (const lab of labs) {
-    await page.getByRole('button', { name: lab }).click()
+    await page.locator('.lab-list').getByRole('button', { name: lab }).click()
     const canvas = page.getByTestId('lab-canvas')
     await expect(canvas).toBeVisible()
     const box = await canvas.boundingBox()
