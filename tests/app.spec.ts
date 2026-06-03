@@ -196,3 +196,20 @@ test('mobile viewport keeps all workbench regions reachable', async ({ page }) =
   await expect(page.getByTestId('lab-canvas')).toBeVisible()
   await expect(page.getByText('Metrics (Live)')).toBeVisible()
 })
+
+test('medium viewport keeps the coalescing diagram near the canvas header', async ({ page }) => {
+  await page.setViewportSize({ width: 1116, height: 1012 })
+  await page.goto('/')
+
+  const headerBox = await page.locator('.canvas-header').boundingBox()
+  const warpLabelBox = await page.locator('svg text.diagram-label').filter({ hasText: 'WARP LANES' }).boundingBox()
+  const railBox = await page.locator('.control-rail').boundingBox()
+  const canvasBox = await page.locator('.canvas-panel').boundingBox()
+
+  expect(headerBox).not.toBeNull()
+  expect(warpLabelBox).not.toBeNull()
+  expect(railBox).not.toBeNull()
+  expect(canvasBox).not.toBeNull()
+  expect(warpLabelBox!.y - (headerBox!.y + headerBox!.height)).toBeLessThan(80)
+  expect(Math.abs(railBox!.height - canvasBox!.height)).toBeLessThan(2)
+})

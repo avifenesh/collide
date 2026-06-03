@@ -47,10 +47,17 @@ function CoalescingView({ result }: { result: LabResult }) {
   const transactionBases = new Set(result.transactions.map((transaction) => transaction.base))
   const touchedAddresses = new Set(result.lanes.map((lane) => lane.address))
   const width = Math.max(1180, result.controls.warpSize * 34)
+  const height = 380 + Math.max(0, lines.length - 1) * 74
 
   return (
     <div className="diagram-scroll">
-      <svg className="memory-diagram" viewBox={`0 0 ${width} 620`} role="img" aria-label="Lane addresses and memory transactions">
+      <svg
+        className="memory-diagram"
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMinYMin meet"
+        role="img"
+        aria-label="Lane addresses and memory transactions"
+      >
         <text x="28" y="34" className="diagram-label">WARP LANES</text>
         {result.lanes.map((lane, index) => {
           const x = 112 + index * laneGap(result.controls.warpSize)
