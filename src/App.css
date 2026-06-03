@@ -316,6 +316,10 @@
   border-bottom: 1px solid var(--line);
 }
 
+.explanation-first .learning-coach {
+  margin-top: 0;
+}
+
 .rail-section h2,
 .metric-panel h2,
 .shader-panel h2,
@@ -478,19 +482,10 @@
   border-color: rgba(118, 240, 141, 0.28);
 }
 
-.coach-head,
 .coach-delta,
 .coach-compare {
   display: flex;
   align-items: center;
-}
-
-.coach-head {
-  justify-content: space-between;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  font: 800 11px/1 var(--sans);
 }
 
 .learning-coach p {
@@ -498,6 +493,37 @@
   color: #d6e8ee;
   font-size: 12px;
   line-height: 1.45;
+}
+
+.learning-coach .coach-concept {
+  color: #f1fbff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.coach-pattern {
+  display: grid;
+  gap: 4px;
+  padding: 8px 9px;
+  border-left: 2px solid rgba(18, 203, 195, 0.72);
+  border-radius: 5px;
+  background: rgba(2, 6, 8, 0.26);
+}
+
+.coach-pattern small {
+  color: var(--muted);
+  font: 800 10px/1 var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.coach-pattern strong {
+  color: var(--teal);
+  font-size: 12px;
+}
+
+.coach-pattern p {
+  color: #cfe2e8;
 }
 
 .coach-compare {

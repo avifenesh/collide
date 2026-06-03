@@ -58,7 +58,7 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle')
   const [shareUrl, setShareUrl] = useState<string | null>(null)
-  const [inspectorTab, setInspectorTab] = useState<'shader' | 'notes'>('shader')
+  const [inspectorTab, setInspectorTab] = useState<'shader' | 'notes'>('notes')
   const [activeHelp, setActiveHelp] = useState<string | null>(null)
   const runId = useRef(0)
   const inspectorRef = useRef<HTMLElement | null>(null)
@@ -238,6 +238,17 @@ function App() {
 
       <main className="workspace">
         <aside className="control-rail" aria-label="Labs and simulation controls">
+          <section className="rail-section explanation-first">
+            <SectionTitle title="Start Here" helpId="coach" activeHelp={activeHelp} onHelp={showHelp} />
+            <LearningCoach
+              lab={lab}
+              preset={selectedPreset}
+              result={result}
+              baselineResult={baselineResult}
+              activeHelp={activeHelp}
+            />
+          </section>
+
           <section className="rail-section lab-switcher">
             <SectionTitle title="Labs" helpId="labs" activeHelp={activeHelp} onHelp={showHelp} />
             <div className="lab-list">
@@ -258,14 +269,6 @@ function App() {
 
           <section className="rail-section" ref={presetsRef}>
             <SectionTitle title="Guided Presets" helpId="presets" activeHelp={activeHelp} onHelp={showHelp} />
-            <LearningCoach
-              lab={lab}
-              preset={selectedPreset}
-              result={result}
-              baselineResult={baselineResult}
-              activeHelp={activeHelp}
-              onHelp={showHelp}
-            />
             <div className="preset-list">
               {lab.presets.map((preset) => (
                 <button
@@ -470,13 +473,12 @@ function LearningPath({ activeIndex, onSelect }: {
   )
 }
 
-function LearningCoach({ lab, preset, result, baselineResult, activeHelp, onHelp }: {
+function LearningCoach({ lab, preset, result, baselineResult, activeHelp }: {
   lab: LabDefinition
   preset: LabPreset
   result: LabResult
   baselineResult: LabResult
   activeHelp: string | null
-  onHelp: (key: string) => void
 }) {
   const cycleDelta = result.summary.estimatedCycles - baselineResult.summary.estimatedCycles
   const efficiencyDelta = result.summary.efficiency - baselineResult.summary.efficiency
@@ -484,11 +486,12 @@ function LearningCoach({ lab, preset, result, baselineResult, activeHelp, onHelp
 
   return (
     <article className={`learning-coach ${tone}`} data-testid="learning-coach">
-      <div className="coach-head">
-        <span>What changed</span>
-        <HelpButton id="coach" activeHelp={activeHelp} onToggle={onHelp} />
+      <p className="coach-concept">{lab.concept}</p>
+      <div className="coach-pattern">
+        <small>Current pattern</small>
+        <strong>{preset.title}</strong>
+        <p>{preset.why}</p>
       </div>
-      <p>{preset.why}</p>
       <div className="coach-compare" aria-label="Current pattern compared with the baseline preset">
         <div>
           <small>Baseline</small>
@@ -757,7 +760,7 @@ function helpText(id: string): string {
     parameters: 'Parameters mutate the shader input. The CPU reference updates immediately; WebGPU replaces it only after matching the reference.',
     reset: 'Reset Lab restores the current lab to its first guided preset and stops timeline playback.',
     canvas: 'The center canvas draws the actual lane records and summary counters returned by the simulator.',
-    coach: 'What changed compares the selected preset with the lab baseline so the hardware consequence is visible before you inspect the shader.',
+    coach: 'Start Here puts the concept before controls, then compares the selected pattern with the lab baseline before you inspect the shader.',
     metrics: 'Metrics are live counters decoded from the current result: WebGPU when verified, CPU reference as fallback.',
     cycles: 'Estimated cycles are teaching scores, not vendor-profiler timing. They let patterns be compared consistently.',
     status: 'Status tells you whether WebGPU is available, which runtime is displayed, and whether GPU output matched the CPU reference.',

@@ -13,7 +13,9 @@ describe('Collide 1.0 workbench shell', () => {
     expect(rail.getByRole('button', { name: /Reduce \/ Scan/ })).toBeInTheDocument()
     expect(rail.getByRole('button', { name: /Occupancy/ })).toBeInTheDocument()
     expect(screen.getByTestId('learning-path')).toHaveTextContent('1 / 5')
-    expect(screen.getByTestId('learning-coach')).toHaveTextContent('What changed')
+    expect(rail.getByRole('heading', { name: /Start Here/ })).toBeInTheDocument()
+    expect(screen.getByTestId('learning-coach')).toHaveTextContent('See how a warp turns lane addresses')
+    expect(screen.getByText('What This Shows')).toBeInTheDocument()
     expect(screen.getByLabelText('Pipeline timeline')).toBeInTheDocument()
   })
 

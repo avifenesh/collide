@@ -16,7 +16,10 @@ test('app loads the workbench and core controls without console errors', async (
   await expect(page.getByRole('button', { name: /Share/ })).toBeVisible()
   await expect(page.getByText('Metrics (Live)')).toBeVisible()
   await expect(page.getByTestId('learning-path')).toContainText('1 / 5')
-  await expect(page.getByTestId('learning-coach')).toContainText('What changed')
+  await expect(page.getByRole('heading', { name: /Start Here/ })).toBeVisible()
+  await expect(page.getByTestId('learning-coach')).toContainText('See how a warp turns lane addresses')
+  await expect(page.getByRole('button', { name: /Notes/ })).toHaveClass(/active/)
+  await expect(page.getByRole('heading', { name: /What This Shows/ })).toBeVisible()
 
   await page.getByRole('button', { name: /Strided/ }).click()
   await expect(page.locator('.metric-row').filter({ hasText: 'Efficiency' })).toContainText('50.0 %')
@@ -123,7 +126,7 @@ test('timeline transport controls move, play, pause, and reset predictably', asy
 test('inspector tabs, reduction choice buttons, and sliders update visible state', async ({ page }) => {
   await page.goto('/')
 
-  await page.getByRole('button', { name: /Notes/ }).click()
+  await expect(page.getByRole('button', { name: /Notes/ })).toHaveClass(/active/)
   await expect(page.getByRole('heading', { name: /What This Shows/ })).toBeVisible()
   await page.getByRole('button', { name: /WGSL/ }).click()
   await expect(page.getByText(/lane_address/)).toBeVisible()
@@ -164,6 +167,9 @@ test('contextual question-mark help exists for every major workbench region', as
   ]
 
   for (const label of labels) {
+    if (label.source.includes('shader')) {
+      await page.getByRole('button', { name: /WGSL/ }).click()
+    }
     await page.getByRole('button', { name: label }).first().click()
     await expect(page.getByTestId('help-popover').or(page.getByTestId('inline-help')).first()).toBeVisible()
   }
