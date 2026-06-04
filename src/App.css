@@ -737,12 +737,18 @@ input[type='range'] {
 
 .canvas-header {
   display: flex;
-  align-items: center;
+  align-items: start;
   justify-content: space-between;
   gap: 18px;
   padding: 16px 18px 12px;
   border-bottom: 1px solid rgba(180, 209, 224, 0.15);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent);
+}
+
+.canvas-title-block {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
 }
 
 .canvas-header span,
@@ -757,6 +763,42 @@ input[type='range'] {
   color: #f6fbff;
   font-size: 24px;
   letter-spacing: 0;
+}
+
+.canvas-selection {
+  max-width: min(620px, 100%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 9px;
+  margin-top: 6px;
+  padding: 7px 9px;
+  border: 1px solid rgba(18, 203, 195, 0.22);
+  border-radius: 6px;
+  background: rgba(2, 6, 8, 0.28);
+}
+
+.canvas-selection span {
+  color: var(--muted);
+  font: 820 10px/1 var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.canvas-selection strong {
+  color: var(--teal);
+  font: 820 12px/1 var(--mono);
+}
+
+.canvas-selection small {
+  flex-basis: 100%;
+  color: #c0d5dc;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.canvas-selection.idle strong {
+  color: #dff8f5;
 }
 
 .canvas-score {
@@ -790,6 +832,31 @@ input[type='range'] {
   fill: var(--teal);
   font: 850 13px/1 var(--sans);
   letter-spacing: 0.05em;
+}
+
+.lane-node {
+  outline: none;
+}
+
+.lane-node path,
+.lane-node circle,
+.lane-node rect {
+  transition: opacity 140ms ease, r 140ms ease, stroke-width 140ms ease;
+}
+
+.lane-hit-target {
+  cursor: pointer;
+  outline: none;
+}
+
+.lane-hit-target:focus-visible {
+  stroke: #f6fbff;
+  stroke-width: 3;
+  fill: rgba(255, 255, 255, 0.06);
+}
+
+.lane-node.selected path {
+  filter: drop-shadow(0 0 5px rgba(18, 203, 195, 0.45));
 }
 
 .lane-text {
@@ -829,6 +896,11 @@ input[type='range'] {
 
 .memory-byte.useful {
   fill: var(--teal);
+}
+
+.memory-byte.selected {
+  stroke: #f6fbff;
+  stroke-width: 2;
 }
 
 .transaction-label.hot {

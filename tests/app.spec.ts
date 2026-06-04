@@ -147,6 +147,21 @@ test('inspector tabs, reduction choice buttons, and sliders update visible state
   await expect(page.locator('.metric-row').filter({ hasText: 'Efficiency' })).toContainText('25.0 %')
 })
 
+test('coalescing canvas lets students select a lane and trace its memory consequence', async ({ page }) => {
+  await page.goto('/')
+  const laneTrace = page.getByTestId('canvas-selection')
+
+  await expect(laneTrace).toContainText('No lane selected')
+  await page.getByRole('button', { name: /Select lane 7/ }).click()
+  await expect(laneTrace).toContainText('Lane 7 -> 28 B')
+  await expect(laneTrace).toContainText('cache line 0x0000')
+  await expect(laneTrace).toContainText('32 lanes')
+
+  await page.getByRole('button', { name: /Strided/ }).click()
+  await expect(laneTrace).toContainText('Lane 7 -> 56 B')
+  await expect(laneTrace).toContainText('16 lanes')
+})
+
 test('contextual question-mark help exists for every major workbench region', async ({ page }) => {
   await page.goto('/')
   const helpButtons = page.getByRole('button', { name: /^Explain / })

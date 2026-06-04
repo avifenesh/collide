@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   BANK_COUNT,
   CACHE_LINE_BYTES,
@@ -13,12 +13,25 @@ interface WorkbenchCanvasProps {
 }
 
 export function WorkbenchCanvas({ result }: WorkbenchCanvasProps) {
+  const [laneSelection, setLaneSelection] = useState<{ labId: string, lane: number } | null>(null)
+  const selectedLane = laneSelection?.labId === result.labId ? laneSelection.lane : null
+  const coalescingSelection = result.labId === 'coalescing'
+    ? coalescingSelectionSummary(result, selectedLane)
+    : null
+
   return (
     <div className="workbench-canvas" data-testid="lab-canvas">
       <div className="canvas-header">
-        <div>
+        <div className="canvas-title-block">
           <span>{result.source === 'webgpu' ? 'WebGPU compute result' : 'CPU reference preview'}</span>
           <h2>{result.summary.title}</h2>
+          {coalescingSelection ? (
+            <div className={`canvas-selection ${selectedLane == null ? 'idle' : ''}`} data-testid="canvas-selection">
+              <span>Lane trace</span>
+              <strong>{coalescingSelection.title}</strong>
+              <small>{coalescingSelection.copy}</small>
+            </div>
+          ) : null}
         </div>
         <div className="canvas-score">
           <small>{result.summary.label}</small>
@@ -26,7 +39,13 @@ export function WorkbenchCanvas({ result }: WorkbenchCanvasProps) {
           <span>{result.summary.subvalue}</span>
         </div>
       </div>
-      {result.labId === 'coalescing' ? <CoalescingView result={result} /> : null}
+      {result.labId === 'coalescing' ? (
+        <CoalescingView
+          result={result}
+          selectedLane={selectedLane}
+          onSelectLane={(lane) => setLaneSelection({ labId: result.labId, lane })}
+        />
+      ) : null}
       {result.labId === 'banks' ? <BankView result={result} /> : null}
       {result.labId === 'divergence' ? <DivergenceView result={result} /> : null}
       {result.labId === 'reduction' ? <ReductionView result={result} /> : null}
@@ -35,7 +54,11 @@ export function WorkbenchCanvas({ result }: WorkbenchCanvasProps) {
   )
 }
 
-function CoalescingView({ result }: { result: LabResult }) {
+function CoalescingView({ result, selectedLane, onSelectLane }: {
+  result: LabResult
+  selectedLane: number | null
+  onSelectLane: (lane: number) => void
+}) {
   const maxAddress = result.details.maxAddress ?? CACHE_LINE_BYTES * 4
   const lines = useMemo(() => {
     const next = []
@@ -46,6 +69,7 @@ function CoalescingView({ result }: { result: LabResult }) {
   }, [maxAddress])
   const transactionBases = new Set(result.transactions.map((transaction) => transaction.base))
   const touchedAddresses = new Set(result.lanes.map((lane) => lane.address))
+  const selectedRecord = selectedLane == null ? null : result.lanes.find((lane) => lane.lane === selectedLane) ?? null
   const width = Math.max(1180, result.controls.warpSize * 34)
   const height = 380 + Math.max(0, lines.length - 1) * 74
 
@@ -63,18 +87,55 @@ function CoalescingView({ result }: { result: LabResult }) {
           const x = 112 + index * laneGap(result.controls.warpSize)
           const targetX = addressX(lane.address, maxAddress)
           const color = laneColor(index, result.controls.warpSize)
+          const isSelected = selectedLane === lane.lane
           return (
-            <g key={lane.lane}>
-              <rect x={x - 13} y="52" width="26" height="30" rx="5" fill={color} />
+            <g key={lane.lane} className={`lane-node ${isSelected ? 'selected' : ''}`}>
+              <rect
+                x={x - 13}
+                y="52"
+                width="26"
+                height="30"
+                rx="5"
+                fill={color}
+                stroke={isSelected ? '#f6fbff' : 'transparent'}
+                strokeWidth={isSelected ? 3 : 0}
+              />
               <text x={x} y="72" className="lane-text">{lane.lane}</text>
               <path
                 d={`M ${x} 84 C ${x} 130, ${targetX} 126, ${targetX} 170`}
                 stroke={color}
-                strokeWidth="1.4"
+                strokeWidth={isSelected ? 3 : 1.4}
                 fill="none"
-                opacity="0.72"
+                opacity={isSelected ? 1 : 0.72}
               />
-              <circle cx={targetX} cy="176" r="4" fill={color} />
+              <circle
+                cx={targetX}
+                cy="176"
+                r={isSelected ? 7 : 4}
+                fill={color}
+                stroke={isSelected ? '#f6fbff' : 'transparent'}
+                strokeWidth={isSelected ? 2 : 0}
+              />
+              <rect
+                x={x - 16}
+                y="49"
+                width="32"
+                height="36"
+                rx="7"
+                fill="transparent"
+                className="lane-hit-target"
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSelected}
+                aria-label={`Select lane ${lane.lane}, address ${formatBytes(lane.address)}, ${formatCacheLine(lane.transactionBase)}`}
+                onClick={() => onSelectLane(lane.lane)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    onSelectLane(lane.lane)
+                  }
+                }}
+              />
             </g>
           )
         })}
@@ -109,6 +170,7 @@ function CoalescingView({ result }: { result: LabResult }) {
                 const address = base + cell * 4
                 const x = 122 + cell * 25
                 const touched = touchedAddresses.has(address)
+                const selected = selectedRecord?.address === address
                 return (
                   <rect
                     key={address}
@@ -117,7 +179,7 @@ function CoalescingView({ result }: { result: LabResult }) {
                     width="17"
                     height="22"
                     rx="3"
-                    className={touched ? 'memory-byte useful' : fetched ? 'memory-byte wasted' : 'memory-byte'}
+                    className={`${touched ? 'memory-byte useful' : fetched ? 'memory-byte wasted' : 'memory-byte'} ${selected ? 'selected' : ''}`}
                   />
                 )
               })}
@@ -130,6 +192,28 @@ function CoalescingView({ result }: { result: LabResult }) {
       </svg>
     </div>
   )
+}
+
+function coalescingSelectionSummary(result: LabResult, selectedLane: number | null): { title: string, copy: string } {
+  const lane = selectedLane == null ? null : result.lanes.find((record) => record.lane === selectedLane)
+  if (!lane) {
+    return {
+      title: 'No lane selected',
+      copy: 'Pick a lane number to follow one thread through address, cache-line, and transaction counters.',
+    }
+  }
+
+  const transaction = result.transactions.find((band) => band.base === lane.transactionBase)
+  const sharedLaneCount = transaction?.lanes.length ?? 1
+  const lineLabel = formatCacheLine(lane.transactionBase)
+  return {
+    title: `Lane ${lane.lane} -> ${formatBytes(lane.address)}`,
+    copy: `${lineLabel} fetch serves ${sharedLaneCount} ${sharedLaneCount === 1 ? 'lane' : 'lanes'} and contributes ${formatBytes(result.controls.elementSizeBytes)} of useful payload.`,
+  }
+}
+
+function formatCacheLine(base: number): string {
+  return `cache line 0x${base.toString(16).padStart(4, '0')}`
 }
 
 function BankView({ result }: { result: LabResult }) {
