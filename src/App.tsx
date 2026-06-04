@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ArrowDownToLine,
   ArrowRight,
   BookOpen,
   CheckCircle2,
@@ -63,6 +64,7 @@ function App() {
   const runId = useRef(0)
   const inspectorRef = useRef<HTMLElement | null>(null)
   const presetsRef = useRef<HTMLElement | null>(null)
+  const canvasRef = useRef<HTMLElement | null>(null)
 
   const lab = getLabDefinition(controls.labId)
   const referenceResult = useMemo(() => simulateReference(controls), [controls])
@@ -183,6 +185,12 @@ function App() {
     })
   }
 
+  function showSimulation() {
+    window.requestAnimationFrame(() => {
+      canvasRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    })
+  }
+
   async function shareState() {
     const url = `${window.location.origin}${window.location.pathname}?${encodeControlsToQuery(controls)}`
     setShareUrl(url)
@@ -247,6 +255,15 @@ function App() {
               baselineResult={baselineResult}
               activeHelp={activeHelp}
             />
+            <button
+              type="button"
+              className="mobile-sim-jump"
+              onClick={showSimulation}
+              aria-label="Jump to live simulation"
+            >
+              <ArrowDownToLine size={15} aria-hidden="true" />
+              Live sim
+            </button>
           </section>
 
           <section className="rail-section lab-switcher">
@@ -310,7 +327,7 @@ function App() {
           </section>
         </aside>
 
-        <section className="canvas-panel" aria-label="Interactive simulation canvas">
+        <section className="canvas-panel" aria-label="Interactive simulation canvas" ref={canvasRef}>
           <div className="canvas-help-anchor">
             <HelpButton id="canvas" activeHelp={activeHelp} onToggle={showHelp} />
           </div>

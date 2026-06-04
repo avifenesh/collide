@@ -608,6 +608,10 @@
   background: rgba(255, 255, 255, 0.035);
 }
 
+.mobile-sim-jump {
+  display: none;
+}
+
 .control-list {
   display: grid;
   gap: 13px;
@@ -1830,6 +1834,22 @@ input[type='range'] {
 
   .icon-button span {
     display: none;
+  }
+
+  .mobile-sim-jump {
+    width: 100%;
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    margin-top: 10px;
+    border: 1px solid rgba(18, 203, 195, 0.56);
+    border-radius: 6px;
+    color: #04100f;
+    background: var(--teal);
+    font: 820 12px/1 var(--sans);
+    cursor: pointer;
   }
 
   .workspace {

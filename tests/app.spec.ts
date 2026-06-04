@@ -237,6 +237,11 @@ test('mobile viewport keeps all workbench regions reachable', async ({ page }) =
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Memory Coalescing' })).toBeVisible()
   await expect(page.locator('.lab-list').getByRole('button', { name: /Bank Conflicts/ })).toBeVisible()
+  await page.getByRole('button', { name: /Jump to live simulation/ }).click()
+  await expect.poll(async () => {
+    const box = await page.getByTestId('lab-canvas').boundingBox()
+    return Math.round(box?.y ?? 9999)
+  }).toBeLessThan(24)
   await expect(page.getByTestId('lab-canvas')).toBeVisible()
   await expect(page.getByText('Metrics (Live)')).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true)
