@@ -239,6 +239,7 @@ test('mobile viewport keeps all workbench regions reachable', async ({ page }) =
   await expect(page.locator('.lab-list').getByRole('button', { name: /Bank Conflicts/ })).toBeVisible()
   await expect(page.getByTestId('lab-canvas')).toBeVisible()
   await expect(page.getByText('Metrics (Live)')).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true)
 })
 
 test('medium viewport keeps the coalescing diagram near the canvas header', async ({ page }) => {

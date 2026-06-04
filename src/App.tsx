@@ -224,7 +224,7 @@ function App() {
           </button>
           <div className={`webgpu-pill ${runtime ? 'ok' : 'warn'}`} data-testid="webgpu-status">
             <span className="status-dot" />
-            WebGPU: {runtime ? 'Enabled' : status}
+            <span className="webgpu-label">WebGPU: {runtime ? 'Enabled' : status}</span>
             <HelpButton id="webgpu" activeHelp={activeHelp} onToggle={showHelp} />
           </div>
         </nav>

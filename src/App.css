@@ -256,6 +256,13 @@
   margin-left: 1px;
 }
 
+.webgpu-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .webgpu-pill.ok {
   color: #7cf185;
 }
@@ -1716,7 +1723,8 @@ input[type='range'] {
     height: auto;
     min-height: 100svh;
     grid-template-rows: auto auto auto auto;
-    overflow: visible;
+    overflow-x: hidden;
+    overflow-y: visible;
   }
 
   .topbar {
@@ -1788,6 +1796,28 @@ input[type='range'] {
 
   .brand h1 {
     font-size: 16px;
+  }
+
+  .top-actions {
+    width: 100%;
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .icon-button {
+    width: 38px;
+    flex: 0 0 38px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .webgpu-pill {
+    min-width: 0;
+    flex: 1 1 0;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 8px;
+    font-size: 12px;
   }
 
   .learning-path {
