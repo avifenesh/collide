@@ -173,7 +173,7 @@ function App() {
     setInspectorTab('notes')
     showHelp('notes')
     window.requestAnimationFrame(() => {
-      inspectorRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      inspectorRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
     })
   }
 
@@ -181,13 +181,13 @@ function App() {
     const nextPreset = lab.presets[(controls.presetIndex + 1) % lab.presets.length]
     selectPreset(lab.id, nextPreset.id)
     window.requestAnimationFrame(() => {
-      presetsRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      presetsRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
     })
   }
 
   function showSimulation() {
     window.requestAnimationFrame(() => {
-      canvasRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      canvasRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
     })
   }
 
