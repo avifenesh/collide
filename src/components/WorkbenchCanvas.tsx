@@ -12,12 +12,17 @@ interface WorkbenchCanvasProps {
   result: LabResult
 }
 
+type CanvasSelection =
+  | { labId: 'coalescing', kind: 'lane', id: number }
+  | { labId: 'banks', kind: 'bank', id: number }
+  | { labId: 'divergence', kind: 'divergence-lane', id: number }
+  | { labId: 'reduction', kind: 'reduction-lane', id: number }
+  | { labId: 'occupancy', kind: 'warp', id: number }
+
 export function WorkbenchCanvas({ result }: WorkbenchCanvasProps) {
-  const [laneSelection, setLaneSelection] = useState<{ labId: string, lane: number } | null>(null)
-  const selectedLane = laneSelection?.labId === result.labId ? laneSelection.lane : null
-  const coalescingSelection = result.labId === 'coalescing'
-    ? coalescingSelectionSummary(result, selectedLane)
-    : null
+  const [selection, setSelection] = useState<CanvasSelection | null>(null)
+  const activeSelection = selection?.labId === result.labId ? selection : null
+  const selectionSummary = canvasSelectionSummary(result, activeSelection)
 
   return (
     <div className="workbench-canvas" data-testid="lab-canvas">
@@ -25,13 +30,11 @@ export function WorkbenchCanvas({ result }: WorkbenchCanvasProps) {
         <div className="canvas-title-block">
           <span>{result.source === 'webgpu' ? 'WebGPU compute result' : 'CPU reference preview'}</span>
           <h2>{result.summary.title}</h2>
-          {coalescingSelection ? (
-            <div className={`canvas-selection ${selectedLane == null ? 'idle' : ''}`} data-testid="canvas-selection">
-              <span>Lane trace</span>
-              <strong>{coalescingSelection.title}</strong>
-              <small>{coalescingSelection.copy}</small>
-            </div>
-          ) : null}
+          <div className={`canvas-selection ${activeSelection == null ? 'idle' : ''}`} data-testid="canvas-selection">
+            <span>{selectionSummary.label}</span>
+            <strong>{selectionSummary.title}</strong>
+            <small>{selectionSummary.copy}</small>
+          </div>
         </div>
         <div className="canvas-score">
           <small>{result.summary.label}</small>
@@ -42,14 +45,38 @@ export function WorkbenchCanvas({ result }: WorkbenchCanvasProps) {
       {result.labId === 'coalescing' ? (
         <CoalescingView
           result={result}
-          selectedLane={selectedLane}
-          onSelectLane={(lane) => setLaneSelection({ labId: result.labId, lane })}
+          selectedLane={activeSelection?.kind === 'lane' ? activeSelection.id : null}
+          onSelectLane={(id) => setSelection({ labId: 'coalescing', kind: 'lane', id })}
         />
       ) : null}
-      {result.labId === 'banks' ? <BankView result={result} /> : null}
-      {result.labId === 'divergence' ? <DivergenceView result={result} /> : null}
-      {result.labId === 'reduction' ? <ReductionView result={result} /> : null}
-      {result.labId === 'occupancy' ? <OccupancyView result={result} /> : null}
+      {result.labId === 'banks' ? (
+        <BankView
+          result={result}
+          selectedBank={activeSelection?.kind === 'bank' ? activeSelection.id : null}
+          onSelectBank={(id) => setSelection({ labId: 'banks', kind: 'bank', id })}
+        />
+      ) : null}
+      {result.labId === 'divergence' ? (
+        <DivergenceView
+          result={result}
+          selectedLane={activeSelection?.kind === 'divergence-lane' ? activeSelection.id : null}
+          onSelectLane={(id) => setSelection({ labId: 'divergence', kind: 'divergence-lane', id })}
+        />
+      ) : null}
+      {result.labId === 'reduction' ? (
+        <ReductionView
+          result={result}
+          selectedLane={activeSelection?.kind === 'reduction-lane' ? activeSelection.id : null}
+          onSelectLane={(id) => setSelection({ labId: 'reduction', kind: 'reduction-lane', id })}
+        />
+      ) : null}
+      {result.labId === 'occupancy' ? (
+        <OccupancyView
+          result={result}
+          selectedWarp={activeSelection?.kind === 'warp' ? activeSelection.id : null}
+          onSelectWarp={(id) => setSelection({ labId: 'occupancy', kind: 'warp', id })}
+        />
+      ) : null}
     </div>
   )
 }
@@ -194,10 +221,27 @@ function CoalescingView({ result, selectedLane, onSelectLane }: {
   )
 }
 
-function coalescingSelectionSummary(result: LabResult, selectedLane: number | null): { title: string, copy: string } {
+function canvasSelectionSummary(result: LabResult, selection: CanvasSelection | null): { label: string, title: string, copy: string } {
+  if (result.labId === 'coalescing') {
+    return coalescingSelectionSummary(result, selection?.kind === 'lane' ? selection.id : null)
+  }
+  if (result.labId === 'banks') {
+    return bankSelectionSummary(result, selection?.kind === 'bank' ? selection.id : null)
+  }
+  if (result.labId === 'divergence') {
+    return divergenceSelectionSummary(result, selection?.kind === 'divergence-lane' ? selection.id : null)
+  }
+  if (result.labId === 'reduction') {
+    return reductionSelectionSummary(result, selection?.kind === 'reduction-lane' ? selection.id : null)
+  }
+  return occupancySelectionSummary(result, selection?.kind === 'warp' ? selection.id : null)
+}
+
+function coalescingSelectionSummary(result: LabResult, selectedLane: number | null): { label: string, title: string, copy: string } {
   const lane = selectedLane == null ? null : result.lanes.find((record) => record.lane === selectedLane)
   if (!lane) {
     return {
+      label: 'Lane trace',
       title: 'No lane selected',
       copy: 'Pick a lane number to follow one thread through address, cache-line, and transaction counters.',
     }
@@ -207,8 +251,86 @@ function coalescingSelectionSummary(result: LabResult, selectedLane: number | nu
   const sharedLaneCount = transaction?.lanes.length ?? 1
   const lineLabel = formatCacheLine(lane.transactionBase)
   return {
+    label: 'Lane trace',
     title: `Lane ${lane.lane} -> ${formatBytes(lane.address)}`,
     copy: `${lineLabel} fetch serves ${sharedLaneCount} ${sharedLaneCount === 1 ? 'lane' : 'lanes'} and contributes ${formatBytes(result.controls.elementSizeBytes)} of useful payload.`,
+  }
+}
+
+function bankSelectionSummary(result: LabResult, selectedBank: number | null): { label: string, title: string, copy: string } {
+  const bank = selectedBank == null ? null : result.banks.find((record) => record.bank === selectedBank)
+  if (!bank) {
+    return {
+      label: 'Bank trace',
+      title: 'No bank selected',
+      copy: 'Pick a shared-memory bank column to see which lanes map there and whether replay is required.',
+    }
+  }
+
+  const laneCopy = bank.lanes.length ? `lanes ${bank.lanes.join(', ')}` : 'no lanes'
+  return {
+    label: 'Bank trace',
+    title: `Bank ${bank.bank} -> ${bank.conflict} ${bank.conflict === 1 ? 'lane' : 'lanes'}`,
+    copy: bank.lanes.length
+      ? `This bank receives ${laneCopy}; replay degree is ${Math.max(1, bank.conflict)}x for this column.`
+      : 'This bank is idle for the selected pattern, so it adds no replay pressure.',
+  }
+}
+
+function divergenceSelectionSummary(result: LabResult, selectedLane: number | null): { label: string, title: string, copy: string } {
+  const lane = selectedLane == null ? null : result.lanes.find((record) => record.lane === selectedLane)
+  if (!lane) {
+    return {
+      label: 'Branch trace',
+      title: 'No lane selected',
+      copy: 'Pick a lane cell to see which branch body it follows and what other lanes wait during serialization.',
+    }
+  }
+
+  const path = lane.branchPath === 0 ? 'Path A' : 'Path B'
+  const pathCount = result.details.pathCounts?.[lane.branchPath] ?? result.lanes.filter((record) => record.branchPath === lane.branchPath).length
+  const waitingCount = result.controls.warpSize - pathCount
+  return {
+    label: 'Branch trace',
+    title: `Lane ${lane.lane} -> ${path}`,
+    copy: `${pathCount} ${pathCount === 1 ? 'lane takes' : 'lanes take'} ${path}; ${waitingCount} ${waitingCount === 1 ? 'lane waits' : 'lanes wait'} while the other serialized body issues.`,
+  }
+}
+
+function reductionSelectionSummary(result: LabResult, selectedLane: number | null): { label: string, title: string, copy: string } {
+  const lane = selectedLane == null ? null : result.lanes.find((record) => record.lane === selectedLane)
+  if (!lane) {
+    return {
+      label: 'Operation trace',
+      title: 'No lane selected',
+      copy: 'Pick a lane value to see whether this step performs work, which partner it reads, and where the barrier lands.',
+    }
+  }
+
+  const partnerCopy = lane.partner == null ? 'has no partner this step' : `reads L${lane.partner}`
+  const mode = result.controls.reductionMode === 0 ? 'tree reduction' : 'scan'
+  return {
+    label: 'Operation trace',
+    title: `Lane ${lane.lane} -> ${lane.active ? 'active' : 'idle'}`,
+    copy: `Value ${lane.value}; ${partnerCopy} at offset ${result.details.offset ?? 1} in the ${mode} schedule.`,
+  }
+}
+
+function occupancySelectionSummary(result: LabResult, selectedWarp: number | null): { label: string, title: string, copy: string } {
+  const lane = selectedWarp == null ? null : result.lanes.find((record) => record.lane === selectedWarp)
+  if (!lane) {
+    return {
+      label: 'Warp trace',
+      title: 'No warp selected',
+      copy: 'Pick a warp slot to see whether it is resident and how the current resource limit affects latency hiding.',
+    }
+  }
+
+  const residentWarps = result.details.residentWarps ?? result.lanes.filter((record) => record.active).length
+  return {
+    label: 'Warp trace',
+    title: `Warp ${lane.lane} -> ${lane.active ? 'resident' : 'not resident'}`,
+    copy: `${residentWarps} resident warps fit because ${result.details.limitingFactor} is currently limiting this block shape.`,
   }
 }
 
@@ -216,14 +338,24 @@ function formatCacheLine(base: number): string {
   return `cache line 0x${base.toString(16).padStart(4, '0')}`
 }
 
-function BankView({ result }: { result: LabResult }) {
+function BankView({ result, selectedBank, onSelectBank }: {
+  result: LabResult
+  selectedBank: number | null
+  onSelectBank: (bank: number) => void
+}) {
   const maxConflict = Math.max(1, result.details.maxConflict ?? 1)
 
   return (
     <div className="bank-layout">
       <div className="bank-strip" aria-label="Shared memory banks">
         {result.banks.map((bank) => (
-          <BankColumn key={bank.bank} bank={bank} maxConflict={maxConflict} />
+          <BankColumn
+            key={bank.bank}
+            bank={bank}
+            maxConflict={maxConflict}
+            selected={selectedBank === bank.bank}
+            onSelect={() => onSelectBank(bank.bank)}
+          />
         ))}
       </div>
       <div className="bank-readout">
@@ -235,27 +367,43 @@ function BankView({ result }: { result: LabResult }) {
   )
 }
 
-function BankColumn({ bank, maxConflict }: { bank: BankGroup; maxConflict: number }) {
+function BankColumn({ bank, maxConflict, selected, onSelect }: {
+  bank: BankGroup
+  maxConflict: number
+  selected: boolean
+  onSelect: () => void
+}) {
   const height = Math.max(12, (bank.conflict / maxConflict) * 156)
+  const laneLabel = bank.lanes.length > 4 ? `${bank.lanes.length}x` : bank.lanes.length ? bank.lanes.join(',') : '-'
   return (
-    <div className={`bank-column ${bank.conflict > 1 ? 'conflict' : bank.conflict === 1 ? 'clean' : ''}`}>
+    <button
+      type="button"
+      className={`bank-column ${bank.conflict > 1 ? 'conflict' : bank.conflict === 1 ? 'clean' : ''} ${selected ? 'selected' : ''}`}
+      aria-pressed={selected}
+      aria-label={`Select bank ${bank.bank}, ${bank.lanes.length} ${bank.lanes.length === 1 ? 'lane' : 'lanes'}`}
+      onClick={onSelect}
+    >
       <span className="bank-number">{bank.bank}</span>
       <div className="bank-meter">
         <i style={{ height }} />
       </div>
-      <span className="bank-lanes">{bank.lanes.length ? bank.lanes.join(',') : '-'}</span>
-    </div>
+      <span className="bank-lanes">{laneLabel}</span>
+    </button>
   )
 }
 
-function DivergenceView({ result }: { result: LabResult }) {
+function DivergenceView({ result, selectedLane, onSelectLane }: {
+  result: LabResult
+  selectedLane: number | null
+  onSelectLane: (lane: number) => void
+}) {
   const pathA = result.lanes.filter((lane) => lane.branchPath === 0)
   const pathB = result.lanes.filter((lane) => lane.branchPath === 1)
 
   return (
     <div className="divergence-layout">
-      <BranchLaneRow title="Path A" lanes={pathA} result={result} />
-      <BranchLaneRow title="Path B" lanes={pathB} result={result} />
+      <BranchLaneRow title="Path A" lanes={pathA} result={result} selectedLane={selectedLane} onSelectLane={onSelectLane} />
+      <BranchLaneRow title="Path B" lanes={pathB} result={result} selectedLane={selectedLane} onSelectLane={onSelectLane} />
       <div className="simt-issue">
         {[0, 1].map((path) => {
           const count = path === 0 ? pathA.length : pathB.length
@@ -272,7 +420,13 @@ function DivergenceView({ result }: { result: LabResult }) {
   )
 }
 
-function BranchLaneRow({ title, lanes, result }: { title: string; lanes: LaneRecord[]; result: LabResult }) {
+function BranchLaneRow({ title, lanes, result, selectedLane, onSelectLane }: {
+  title: string
+  lanes: LaneRecord[]
+  result: LabResult
+  selectedLane: number | null
+  onSelectLane: (lane: number) => void
+}) {
   return (
     <section className="branch-row">
       <div className="branch-title">
@@ -284,14 +438,19 @@ function BranchLaneRow({ title, lanes, result }: { title: string; lanes: LaneRec
           const record = result.lanes[lane]
           const belongs = record?.branchPath === (title === 'Path A' ? 0 : 1)
           const activeNow = belongs && record.active
+          const selected = selectedLane === lane && belongs
           return (
-            <i
+            <button
+              type="button"
               key={lane}
-              className={`${belongs ? 'belongs' : ''} ${activeNow ? 'active' : ''}`}
+              className={`${belongs ? 'belongs' : ''} ${activeNow ? 'active' : ''} ${selected ? 'selected' : ''}`}
+              aria-pressed={selected}
+              aria-label={`${belongs ? 'Select' : 'Inspect'} ${title} lane ${lane}`}
               title={`lane ${lane}`}
+              onClick={() => onSelectLane(lane)}
             >
               {lane}
-            </i>
+            </button>
           )
         })}
       </div>
@@ -299,7 +458,11 @@ function BranchLaneRow({ title, lanes, result }: { title: string; lanes: LaneRec
   )
 }
 
-function ReductionView({ result }: { result: LabResult }) {
+function ReductionView({ result, selectedLane, onSelectLane }: {
+  result: LabResult
+  selectedLane: number | null
+  onSelectLane: (lane: number) => void
+}) {
   const offset = result.details.offset ?? 1
   const activeLanes = result.lanes.filter((lane) => lane.active)
 
@@ -311,11 +474,18 @@ function ReductionView({ result }: { result: LabResult }) {
       </div>
       <div className="reduction-lanes">
         {result.lanes.map((lane) => (
-          <div key={lane.lane} className={`reduce-lane ${lane.active ? 'active' : ''}`}>
+          <button
+            type="button"
+            key={lane.lane}
+            className={`reduce-lane ${lane.active ? 'active' : ''} ${selectedLane === lane.lane ? 'selected' : ''}`}
+            aria-pressed={selectedLane === lane.lane}
+            aria-label={`Select reduction lane ${lane.lane}`}
+            onClick={() => onSelectLane(lane.lane)}
+          >
             <span>L{lane.lane}</span>
             <strong>{lane.value}</strong>
             <small>{lane.partner == null ? 'idle' : `with L${lane.partner}`}</small>
-          </div>
+          </button>
         ))}
       </div>
       <div className="barrier-strip">
@@ -327,7 +497,11 @@ function ReductionView({ result }: { result: LabResult }) {
   )
 }
 
-function OccupancyView({ result }: { result: LabResult }) {
+function OccupancyView({ result, selectedWarp, onSelectWarp }: {
+  result: LabResult
+  selectedWarp: number | null
+  onSelectWarp: (warp: number) => void
+}) {
   const activeWarps = result.lanes.filter((lane) => lane.active).length
   const occupancy = result.details.occupancyPermille ?? 0
   const latency = result.details.latencyPermille ?? 0
@@ -341,9 +515,16 @@ function OccupancyView({ result }: { result: LabResult }) {
       </div>
       <div className="warp-slots" aria-label="Resident warp slots">
         {result.lanes.map((lane) => (
-          <span key={lane.lane} className={lane.active ? 'resident' : ''}>
+          <button
+            type="button"
+            key={lane.lane}
+            className={`${lane.active ? 'resident' : ''} ${selectedWarp === lane.lane ? 'selected' : ''}`}
+            aria-pressed={selectedWarp === lane.lane}
+            aria-label={`Select warp ${lane.lane}`}
+            onClick={() => onSelectWarp(lane.lane)}
+          >
             {lane.lane}
-          </span>
+          </button>
         ))}
       </div>
       <div className="occupancy-note">

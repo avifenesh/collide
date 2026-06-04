@@ -162,6 +162,35 @@ test('coalescing canvas lets students select a lane and trace its memory consequ
   await expect(laneTrace).toContainText('16 lanes')
 })
 
+test('all systems canvases expose selectable trace targets', async ({ page }) => {
+  await page.goto('/')
+  const trace = page.getByTestId('canvas-selection')
+
+  await page.locator('.lab-list').getByRole('button', { name: /Bank Conflicts/ }).click()
+  await expect(trace).toContainText('No bank selected')
+  await page.getByRole('button', { name: /Select bank 0/ }).click()
+  await expect(trace).toContainText('Bank 0 -> 1 lane')
+  await page.getByRole('button', { name: /Stride 16/ }).click()
+  await expect(trace).toContainText('Bank 0 -> 16 lanes')
+
+  await page.locator('.lab-list').getByRole('button', { name: /Divergence/ }).click()
+  await expect(trace).toContainText('No lane selected')
+  await page.getByRole('button', { name: /Select Path A lane 7/ }).click()
+  await expect(trace).toContainText('Lane 7 -> Path A')
+  await page.getByRole('button', { name: /Alternating/ }).click()
+  await expect(trace).toContainText('Lane 7 -> Path B')
+
+  await page.locator('.lab-list').getByRole('button', { name: /Reduce \/ Scan/ }).click()
+  await expect(trace).toContainText('No lane selected')
+  await page.getByRole('button', { name: /Select reduction lane 0/ }).click()
+  await expect(trace).toContainText('Lane 0 -> active')
+
+  await page.locator('.lab-list').getByRole('button', { name: /Occupancy/ }).click()
+  await expect(trace).toContainText('No warp selected')
+  await page.getByRole('button', { name: /Select warp 0/ }).click()
+  await expect(trace).toContainText('Warp 0 -> resident')
+})
+
 test('contextual question-mark help exists for every major workbench region', async ({ page }) => {
   await page.goto('/')
   const helpButtons = page.getByRole('button', { name: /^Explain / })
